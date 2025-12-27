@@ -1,0 +1,174 @@
+import { motion } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
+import { Rocket, Menu, X, User, LayoutDashboard, FolderOpen, Users, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useState } from 'react';
+
+export const navItems = [
+  { path: '/', label: 'Home', icon: Rocket },
+  { path: '/projects', label: 'Projects', icon: FolderOpen },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/faculty', label: 'faculty expertees', icon: Users },
+];
+
+export function Navbar() {
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  return (
+    <>
+    <motion.nav
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="fixed top-0 left-0 right-0 z-50 px-4 py-3 md:hidden"
+    >
+      <div className="max-w-7xl mx-auto">
+        <div className="glass-card rounded-2xl px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                <Rocket className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold gradient-text">CollabX</span>
+            </Link>
+
+            {/* Desktop Navigation moved to sidebar for md+ */}
+            <div className="hidden">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link key={item.path} to={item.path}>
+                    <Button
+                      variant={isActive ? 'secondary' : 'ghost'}
+                      className={`gap-2 ${isActive ? 'bg-primary/10 text-primary' : ''}`}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+
+          </div>
+
+          {/* User Menu */}
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeToggle />
+            <Link to="/profile">
+              <Button variant="glass" size="sm" className="gap-2">
+                <User className="w-4 h-4" />
+                Student
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-2xl mt-2 p-4 md:hidden"
+          >
+            <div className="flex flex-col gap-2">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link key={item.path} to={item.path} onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant={isActive ? 'secondary' : 'ghost'}
+                      className={`w-full justify-start gap-2 ${isActive ? 'bg-primary/10 text-primary' : ''}`}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
+              <div className="flex justify-end md:hidden">
+                <ThemeToggle />
+              </div>
+              <div className="border-t border-border my-2" />
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start gap-2 text-destructive">
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </motion.nav>
+
+    {/* Desktop Topbar */}
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-background/50 backdrop-blur px-6 py-3"
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+              <Rocket className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-bold gradient-text">CollabX</span>
+          </Link>
+
+          <nav className="hidden lg:flex items-center gap-2 ml-4">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link key={item.path} to={item.path}>
+                  <Button
+                    variant={isActive ? 'secondary' : 'ghost'}
+                    className={`gap-2 ${isActive ? 'bg-primary/10 text-primary' : ''}`}>
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link to="/profile">
+            <Button variant="glass" size="sm" className="gap-2 hidden sm:flex">
+              <User className="w-4 h-4" />
+              Student
+            </Button>
+          </Link>
+          <Link to="/login">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </motion.header>
+
+
+    </>
+  );
+}

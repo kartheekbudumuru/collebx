@@ -1,0 +1,89 @@
+import { motion } from 'framer-motion';
+import { Navbar } from '@/components/layout/Navbar';
+import { HeroSection } from '@/components/home/HeroSection';
+import { StatsSection } from '@/components/home/StatsSection';
+import { DomainCard } from '@/components/home/DomainCard';
+import { domains } from '@/data/mockData';
+
+const Index = () => {
+  return (
+    <div className="min-h-screen gradient-background">
+      <Navbar />
+      
+      <main className="pt-24 pb-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Hero Section */}
+          <HeroSection />
+          
+          {/* Stats Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-16"
+          >
+            <StatsSection />
+          </motion.div>
+
+          {/* Domain Selection */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-16"
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                Choose Your <span className="gradient-text">Domain</span>
+              </h2>
+              <p className="text-muted-foreground">
+                Explore projects in your area of interest
+              </p>
+            </div>
+            
+            <div className="grid items-stretch grid-cols-2 md:grid-cols-4 gap-4">
+              {domains.map((domain, index) => (
+                <DomainCard key={domain.id} domain={domain} index={index} />
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Call to Action */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-20 text-center"
+          >
+            <div className="glass-card rounded-3xl p-8 md:p-12 max-w-3xl mx-auto gradient-hero">
+              <h3 className="text-2xl md:text-3xl font-bold mb-4">
+                Have a project idea? 💡
+              </h3>
+              <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
+                Share your vision and find the perfect team to bring it to life. Start your project today and inspire others to join!
+              </p>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <a href="/projects?action=create">
+                  <button className="gradient-primary text-primary-foreground font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                    Start Your Project 🚀
+                  </button>
+                </a>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border py-8 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-sm text-muted-foreground">
+            © 2024 CollabX - MVGR Engineering College. Building the future together.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default Index;
