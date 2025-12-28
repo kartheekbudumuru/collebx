@@ -2,16 +2,25 @@ import { motion } from 'framer-motion';
 import { Rocket, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { toast } from 'sonner';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { useAuth } from '@/components/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+
+  // Redirect to home if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -20,7 +29,7 @@ export default function Login() {
       return;
     }
 
-    setLoading(true);
+    setSigningIn(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success('Login successful');
@@ -29,7 +38,7 @@ export default function Login() {
       console.error(error);
       toast.error('Invalid email or password');
     } finally {
-      setLoading(false);
+      setSigningIn(false);
     }
   };
 
@@ -126,9 +135,9 @@ export default function Login() {
               />
             </div>
 
-            <Button type="submit" variant="gradient" size="xl" className="w-full gap-2" disabled={loading}>
+            <Button type="submit" variant="gradient" size="xl" className="w-full gap-2" disabled={signingIn}>
               <Sparkles className="w-5 h-5" />
-              {loading ? 'Signing in...' : 'Login'}
+              {signingIn ? 'Signing in...' : 'Login'}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </motion.form>

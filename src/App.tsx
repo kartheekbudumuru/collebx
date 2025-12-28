@@ -18,6 +18,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageFaculty from "./pages/admin/ManageFaculty";
 import ManageProjects from "./pages/admin/ManageProjects";
 import { AuthProvider } from "./components/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -32,15 +33,17 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/projects" element={<ProjectsList />} />
-            <Route path="/hackathon" element={<Hackathon />} />
-            <Route path="/faculty" element={<Faculty />} />
-            <Route path="/faculty/:id" element={<FacultyDetails />} />
-            <Route path="/dashboard" element={<OwnerDashboard />} />
-            <Route path="/profile" element={<StudentProfile />} />
+            
+            {/* Protected Routes */}
+            <Route path="/projects" element={<ProtectedRoute><ProjectsList /></ProtectedRoute>} />
+            <Route path="/hackathon" element={<ProtectedRoute><Hackathon /></ProtectedRoute>} />
+            <Route path="/faculty" element={<ProtectedRoute><Faculty /></ProtectedRoute>} />
+            <Route path="/faculty/:id" element={<ProtectedRoute><FacultyDetails /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><OwnerDashboard /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><StudentProfile /></ProtectedRoute>} />
             
             {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/admin" element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
               <Route index element={<AdminDashboard />} />
               <Route path="faculty" element={<ManageFaculty />} />
               <Route path="projects" element={<ManageProjects />} />

@@ -2,21 +2,30 @@ import { motion } from 'framer-motion';
 import { Rocket, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { toast } from 'sonner';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { useAuth } from '@/components/AuthContext';
 
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [name, setName] = useState('');
   const [regNo, setRegNo] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [signingUp, setSigningUp] = useState(false);
+
+  // Redirect to home if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -25,7 +34,7 @@ export default function Signup() {
       return;
     }
 
-    setLoading(true);
+    setSigningUp(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -56,7 +65,7 @@ export default function Signup() {
       }
       toast.error(errorMessage);
     } finally {
-      setLoading(false);
+      setSigningUp(false);
     }
   };
 
@@ -136,9 +145,9 @@ export default function Signup() {
               />
             </div>
 
-            <Button type="submit" variant="gradient" size="xl" className="w-full gap-2" disabled={loading}>
+            <Button type="submit" variant="gradient" size="xl" className="w-full gap-2" disabled={signingUp}>
               <Sparkles className="w-5 h-5" />
-              {loading ? 'Creating Account...' : 'Sign Up'}
+              {signingUp ? 'Creating Account...' : 'Sign Up'}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </form>
