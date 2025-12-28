@@ -26,8 +26,9 @@ export function CreateProjectModal({ isOpen, onClose, defaultDomain }: CreatePro
   const [teamSize, setTeamSize] = useState(3);
   const [skillInput, setSkillInput] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [addMeToTeam, setAddMeToTeam] = useState<boolean | null>(null);
 
-  const totalSteps = 4;
+  const totalSteps = 5;
 
   const addSkill = (skill: string, type: 'have' | 'need') => {
     if (type === 'have' && !skillsHave.includes(skill)) {
@@ -46,13 +47,23 @@ export function CreateProjectModal({ isOpen, onClose, defaultDomain }: CreatePro
     }
   };
 
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const handleSubmit = async () => {
     if (!user) return;
+
+    // Determine if user should be added to team
+    let shouldAddToTeam = false;
+    if (isAdmin) {
+      // Admin: only if they explicitly chose to be added
+      shouldAddToTeam = addMeToTeam === true;
+    } else {
+      // Regular user: automatically added unless they chose not to
+      shouldAddToTeam = addMeToTeam !== false;
+    }
     
     try {
-      await addDoc(collection(db, 'projects'), {
+      const projectData: any = {
         title,
         description,
         domain,
@@ -60,18 +71,30 @@ export function CreateProjectModal({ isOpen, onClose, defaultDomain }: CreatePro
         skillsHave,
         skillsNeed,
         teamSize,
-        currentMembers: 1, // Start with the creator
+        currentMembers: shouldAddToTeam ? 1 : 0,
         skillsRequired: [...skillsHave, ...skillsNeed],
         createdBy: user.uid,
         owner: {
             id: user.uid,
-            name: user.email?.split('@')[0] || 'User', // Fallback name
+            name: user.email?.split('@')[0] || 'User',
             email: user.email || '',
-            skills: [] // Add user skills if available
+            skills: []
         },
         createdAt: new Date().toISOString(),
         status: 'pending'
-      });
+      };
+
+      // Add creator to team if applicable
+      if (shouldAddToTeam) {
+        projectData.team = [{
+          userId: user.uid,
+          userName: user.displayName || user.email?.split('@')[0] || 'User',
+          joinedAt: new Date().toISOString(),
+          role: 'owner'
+        }];
+      }
+
+      await addDoc(collection(db, 'projects'), projectData);
 
       setShowSuccess(true);
       setTimeout(() => {
@@ -87,6 +110,7 @@ export function CreateProjectModal({ isOpen, onClose, defaultDomain }: CreatePro
         setSkillsHave([]);
         setSkillsNeed([]);
         setTeamSize(3);
+        setAddMeToTeam(null);
       }, 2000);
     } catch (error) {
       console.error("Error creating project:", error);
@@ -99,6 +123,7 @@ export function CreateProjectModal({ isOpen, onClose, defaultDomain }: CreatePro
       case 1: return title.length > 0 && description.length > 0 && domain;
       case 2: return skillsHave.length > 0 || skillsNeed.length > 0;
       case 3: return difficulty && teamSize >= 2;
+      case 4: return addMeToTeam !== null;
       default: return true;
     }
   };
@@ -338,6 +363,62 @@ export function CreateProjectModal({ isOpen, onClose, defaultDomain }: CreatePro
                   )}
 
                   {step === 4 && (
+                    <motion.div
+                      key="step4"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">
+                          {isAdmin ? 'Add yourself to this project?' : 'Project Membership'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {isAdmin 
+                            ? 'As an admin, you can choose whether to join this project as a member or manage it separately.'
+                            : 'You will be automatically added as a team member to this project.'}
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => setAddMeToTeam(false)}
+                            className={`p-4 rounded-xl border-2 transition-all text-center ${
+                              addMeToTeam === false
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/30'
+                            }`}
+                          >
+                            <div className="text-2xl mb-2">👁️</div>
+                            <div className="font-medium">
+                              {isAdmin ? 'No, just manage' : 'I prefer not to'}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {isAdmin ? 'Stay as admin only' : 'Not a member'}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => setAddMeToTeam(true)}
+                            className={`p-4 rounded-xl border-2 transition-all text-center ${
+                              addMeToTeam === true
+                                ? 'border-success bg-success/5'
+                                : 'border-border hover:border-success/30'
+                            }`}
+                          >
+                            <div className="text-2xl mb-2">✨</div>
+                            <div className="font-medium">
+                              {isAdmin ? 'Yes, join team' : 'Add me to team'}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Be a team member
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {step === 5 && (
                     <motion.div
                       key="step4"
                       initial={{ opacity: 0, x: 20 }}

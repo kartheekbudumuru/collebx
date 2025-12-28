@@ -1,6 +1,6 @@
 import { db } from './firebase';
-import { collection, getDocs, doc, getDoc, addDoc, query, where, updateDoc, arrayUnion, deleteDoc, setDoc } from 'firebase/firestore';
-import { Project, User, Hackathon } from '@/types';
+import { collection, getDocs, doc, getDoc, addDoc, query, where, updateDoc, arrayUnion, deleteDoc, setDoc, increment } from 'firebase/firestore';
+import { Project, User, Hackathon, JoinRequest } from '@/types';
 import { Faculty } from '@/types';
 
 // Projects Collection
@@ -68,4 +68,57 @@ export const updateHackathon = async (hackathonId: string, hackathonData: Partia
 export const deleteHackathon = async (hackathonId: string) => {
   const docRef = doc(db, 'hackathons', hackathonId);
   await deleteDoc(docRef);
+};
+
+// Join Requests Collection
+export const getJoinRequests = async (projectId: string): Promise<JoinRequest[]> => {
+  const q = query(collection(db, 'joinRequests'), where('projectId', '==', projectId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JoinRequest));
+};
+
+export const getUserJoinRequests = async (userId: string): Promise<JoinRequest[]> => {
+  const q = query(collection(db, 'joinRequests'), where('userId', '==', userId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JoinRequest));
+};
+
+export const createJoinRequest = async (joinRequestData: Omit<JoinRequest, 'id'>) => {
+  const docRef = await addDoc(collection(db, 'joinRequests'), joinRequestData);
+  return docRef.id;
+};
+
+export const updateJoinRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
+  const docRef = doc(db, 'joinRequests', requestId);
+  await updateDoc(docRef, { status });
+};
+
+export const deleteJoinRequest = async (requestId: string) => {
+  const docRef = doc(db, 'joinRequests', requestId);
+  await deleteDoc(docRef);
+};
+
+// Add team member to project
+export const addTeamMember = async (projectId: string, userId: string, userName: string, role?: string) => {
+  const docRef = doc(db, 'projects', projectId);
+  await updateDoc(docRef, {
+    team: arrayUnion({ userId, userName, joinedAt: new Date().toISOString(), role }),
+    currentMembers: increment(1)
+  });
+};
+
+// Remove team member from project
+export const removeTeamMember = async (projectId: string, userId: string) => {
+  const projectRef = doc(db, 'projects', projectId);
+  const projectSnap = await getDoc(projectRef);
+  
+  if (projectSnap.exists()) {
+    const currentTeam = projectSnap.data().team || [];
+    const updatedTeam = currentTeam.filter((member: any) => member.userId !== userId);
+    
+    await updateDoc(projectRef, {
+      team: updatedTeam,
+      currentMembers: Math.max(0, (projectSnap.data().currentMembers || 0) - 1)
+    });
+  }
 };

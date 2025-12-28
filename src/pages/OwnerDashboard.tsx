@@ -4,14 +4,15 @@ import { LayoutDashboard, Inbox, Users, FolderOpen, SortAsc, Trash2, Loader2 } f
 import { Navbar } from '@/components/layout/Navbar';
 import { RequestCard } from '@/components/dashboard/RequestCard';
 import { ContactRevealModal } from '@/components/dashboard/ContactRevealModal';
+import { TeamMembersModal } from '@/components/dashboard/TeamMembersModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project } from '@/types';
-import { deleteProject } from '@/lib/api';
+import { Project, JoinRequest } from '@/types';
+import { deleteProject, getJoinRequests, updateJoinRequest, addTeamMember, removeTeamMember } from '@/lib/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,14 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface JoinRequest {
-  id: string;
-  projectId: string;
-  user: { id: string; name: string };
-  status: 'pending' | 'accepted' | 'rejected';
-  createdAt: string;
-}
-
 interface User {
   id: string;
   name: string;
@@ -41,6 +34,8 @@ export default function OwnerDashboard() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [teamMembersOpen, setTeamMembersOpen] = useState(false);
+  const [selectedTeamProject, setSelectedTeamProject] = useState<Project | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [sortBy, setSortBy] = useState<'match' | 'date'>('match');
   const [myProjects, setMyProjects] = useState<Project[]>([]);
@@ -54,9 +49,27 @@ export default function OwnerDashboard() {
 
     // Fetch projects created by the current user
     const q = query(collection(db, 'projects'), where('createdBy', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
       setMyProjects(projects);
+      
+      // Fetch join requests for all user projects
+      let allRequests: JoinRequest[] = [];
+      if (projects.length > 0) {
+        for (const project of projects) {
+          try {
+            const projectRequests = await getJoinRequests(project.id);
+            allRequests = [...allRequests, ...projectRequests];
+          } catch (error) {
+            console.error(`Error fetching requests for project ${project.id}:`, error);
+          }
+        }
+      }
+      console.log('Loaded requests:', allRequests);
+      setRequests(allRequests);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error loading projects:', error);
       setLoading(false);
     });
 
@@ -66,25 +79,105 @@ export default function OwnerDashboard() {
   // const myProjects = mockProjects.slice(0, 2); // REPLACED with real data
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const acceptedCount = requests.filter(r => r.status === 'accepted').length;
+  
+  // Calculate total team members across all projects
+  const totalTeamMembers = myProjects.reduce((total, project) => {
+    return total + (project.team?.length || 0);
+  }, 0);
 
   const sortedRequests = [...pendingRequests].sort((a, b) => {
     if (sortBy === 'match') return b.matchPercentage - a.matchPercentage;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const handleAccept = (request: JoinRequest) => {
-    setRequests(prev =>
-      prev.map(r => (r.id === request.id ? { ...r, status: 'accepted' as const } : r))
-    );
-    setSelectedUser(request.user);
-    setContactModalOpen(true);
+  const handleAccept = async (request: JoinRequest) => {
+    try {
+      // Update join request status
+      await updateJoinRequest(request.id, 'accepted');
+      
+      // Add user to project team
+      const project = myProjects.find(p => p.id === request.projectId);
+      if (project) {
+        await addTeamMember(project.id, request.userId, request.user.name, request.role);
+      }
+      
+      setRequests(prev =>
+        prev.map(r => (r.id === request.id ? { ...r, status: 'accepted' as const } : r))
+      );
+      setSelectedUser({ id: request.userId, name: request.user.name, email: '' });
+      setContactModalOpen(true);
+      toast.success(`Request from ${request.user.name} accepted and added to team`);
+    } catch (error: any) {
+      toast.error('Failed to accept request: ' + error.message);
+      console.error(error);
+    }
   };
 
-  const handleReject = (request: JoinRequest) => {
-    setRequests(prev =>
-      prev.map(r => (r.id === request.id ? { ...r, status: 'rejected' as const } : r))
-    );
-    toast.info(`Request from ${request.user.name} declined`);
+  const handleReject = async (request: JoinRequest) => {
+    try {
+      await updateJoinRequest(request.id, 'rejected');
+      setRequests(prev =>
+        prev.map(r => (r.id === request.id ? { ...r, status: 'rejected' as const } : r))
+      );
+      toast.info(`Request from ${request.user.name} declined`);
+    } catch (error: any) {
+      toast.error('Failed to reject request');
+      console.error(error);
+    }
+  };
+
+  const handleRemoveTeamMember = async (userId: string, projectId?: string) => {
+    if (!selectedTeamProject) return;
+    
+    // Use provided projectId or fall back to selectedTeamProject.id
+    const targetProjectId = projectId || selectedTeamProject.id;
+    
+    try {
+      await removeTeamMember(targetProjectId, userId);
+      
+      // Update projects state
+      const updatedProjects = myProjects.map(p => 
+        p.id === targetProjectId
+          ? { ...p, team: (p.team || []).filter(m => m.userId !== userId), currentMembers: Math.max(0, (p.currentMembers || 0) - 1) }
+          : p
+      );
+      setMyProjects(updatedProjects);
+      
+      // If viewing "All Projects", reconstruct the combined view
+      if (selectedTeamProject.title === 'All Projects') {
+        const allTeamMembers: any[] = [];
+        updatedProjects.forEach(project => {
+          if (project.team && project.team.length > 0) {
+            project.team.forEach(member => {
+              allTeamMembers.push({
+                ...member,
+                projectTitle: project.title,
+                projectId: project.id
+              });
+            });
+          }
+        });
+        
+        const combinedProject = {
+          ...updatedProjects[0],
+          title: 'All Projects',
+          team: allTeamMembers
+        };
+        
+        setSelectedTeamProject(combinedProject as any);
+      } else {
+        // Update single project view
+        const updatedSelectedProject = updatedProjects.find(p => p.id === targetProjectId);
+        if (updatedSelectedProject) {
+          setSelectedTeamProject(updatedSelectedProject);
+        }
+      }
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error removing team member:', error);
+      return Promise.reject(error);
+    }
   };
 
   const handleDeleteProject = async () => {
@@ -142,15 +235,44 @@ export default function OwnerDashboard() {
                 <div className="text-sm text-muted-foreground">Pending Requests</div>
               </div>
             </div>
-            <div className="glass-card rounded-2xl p-5 flex items-center gap-4">
+            <button
+              onClick={() => {
+                if (myProjects.length > 0) {
+                  // Create a combined view of all team members from all projects
+                  const allTeamMembers: any[] = [];
+                  myProjects.forEach(project => {
+                    if (project.team && project.team.length > 0) {
+                      project.team.forEach(member => {
+                        allTeamMembers.push({
+                          ...member,
+                          projectTitle: project.title,
+                          projectId: project.id
+                        });
+                      });
+                    }
+                  });
+                  
+                  // Create a virtual project with all team members
+                  const combinedProject = {
+                    ...myProjects[0],
+                    title: 'All Projects',
+                    team: allTeamMembers
+                  };
+                  
+                  setSelectedTeamProject(combinedProject as any);
+                  setTeamMembersOpen(true);
+                }
+              }}
+              className="glass-card rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/50 transition-colors"
+            >
               <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
                 <Users className="w-6 h-6 text-success" />
               </div>
               <div>
-                <div className="text-2xl font-bold">{acceptedCount}</div>
+                <div className="text-2xl font-bold">{totalTeamMembers}</div>
                 <div className="text-sm text-muted-foreground">Team Members</div>
               </div>
-            </div>
+            </button>
             <div className="glass-card rounded-2xl p-5 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                 <FolderOpen className="w-6 h-6 text-accent" />
@@ -293,6 +415,14 @@ export default function OwnerDashboard() {
         isOpen={contactModalOpen}
         onClose={() => setContactModalOpen(false)}
         user={selectedUser}
+      />
+
+      {/* Team Members Modal */}
+      <TeamMembersModal
+        isOpen={teamMembersOpen}
+        onClose={() => setTeamMembersOpen(false)}
+        project={selectedTeamProject}
+        onRemoveMember={handleRemoveTeamMember}
       />
 
       {/* Delete Project Dialog */}

@@ -3,7 +3,7 @@ import { Check, X, Code, BookOpen, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SkillMatchMeter } from './SkillMatchMeter';
-import { JoinRequest } from '@/data/mockData';
+import { JoinRequest } from '@/types';
 
 interface RequestCardProps {
   request: JoinRequest;

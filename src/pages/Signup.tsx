@@ -49,6 +49,7 @@ export default function Signup() {
         name: name,
         regNo: regNo,
         email: email,
+        skills: [], // Empty skills array
         createdAt: new Date().toISOString(),
         role: 'student' // Default role
       });

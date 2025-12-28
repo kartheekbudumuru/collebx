@@ -3,8 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, User, Code, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Project, skillSuggestions } from '@/data/mockData';
+import { skillSuggestions } from '@/data/mockData';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/AuthContext';
+import { createJoinRequest } from '@/lib/api';
+import { Project } from '@/types';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface JoinProjectModalProps {
   isOpen: boolean;
@@ -13,10 +18,12 @@ interface JoinProjectModalProps {
 }
 
 export function JoinProjectModal({ isOpen, onClose, project }: JoinProjectModalProps) {
+  const { user } = useAuth();
   const [role, setRole] = useState<'developer' | 'learner' | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills(prev =>
@@ -26,16 +33,59 @@ export function JoinProjectModal({ isOpen, onClose, project }: JoinProjectModalP
     );
   };
 
-  const handleSubmit = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      toast.success('Join request sent! 🎉');
-      onClose();
-      setShowSuccess(false);
-      setRole(null);
-      setSelectedSkills([]);
-      setMessage('');
-    }, 2000);
+  const handleSubmit = async () => {
+    if (!user || !project || !role) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const requestData = {
+        projectId: project.id,
+        userId: user.uid,
+        user: { id: user.uid, name: user.displayName || 'Anonymous' },
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        role,
+        skills: selectedSkills,
+        matchPercentage: 0
+      };
+
+      // Only add message if it's not empty
+      if (message.trim()) {
+        Object.assign(requestData, { message });
+      }
+
+      // Update user profile with skills and email
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name: user.displayName || 'Anonymous',
+        email: user.email || '',
+        skills: selectedSkills,
+        role: role,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      console.log('Creating join request:', requestData);
+      const requestId = await createJoinRequest(requestData);
+      console.log('Request created with ID:', requestId);
+
+      setShowSuccess(true);
+      setTimeout(() => {
+        toast.success('Join request sent! 🎉');
+        onClose();
+        setShowSuccess(false);
+        setRole(null);
+        setSelectedSkills([]);
+        setMessage('');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error creating request:', error);
+      toast.error('Failed to send request: ' + error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen || !project) return null;
@@ -203,9 +253,9 @@ export function JoinProjectModal({ isOpen, onClose, project }: JoinProjectModalP
                   className="w-full"
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={!role || selectedSkills.length === 0}
+                  disabled={!role || selectedSkills.length === 0 || submitting}
                 >
-                  Send Request 🤝
+                  {submitting ? 'Sending...' : 'Send Request 🤝'}
                 </Button>
               </div>
             </>

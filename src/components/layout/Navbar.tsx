@@ -67,7 +67,7 @@ export function Navbar() {
 
           </div>
 
-          {/* User Menu */}
+          {/* User Menu - Desktop */}
           <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
             {isAdmin && (
@@ -91,15 +91,24 @@ export function Navbar() {
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
+          {/* User Menu - Mobile */}
+          <div className="md:hidden flex items-center gap-2">
+            <Link to="/profile">
+              <Button variant="ghost" size="icon">
+                <User className="w-4 h-4" />
+              </Button>
+            </Link>
+
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
@@ -127,6 +136,13 @@ export function Navbar() {
               <div className="flex justify-end md:hidden">
                 <ThemeToggle />
               </div>
+              <div className="border-t border-border my-2" />
+              <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start gap-2">
+                  <User className="w-4 h-4" />
+                  My Profile
+                </Button>
+              </Link>
               {isAdmin && (
                 <div className="flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                   <Shield className="w-4 h-4 text-amber-600" />

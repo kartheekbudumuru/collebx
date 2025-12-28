@@ -25,6 +25,7 @@ export interface Project {
   owner?: User; // Optional as we might just store ownerId
   createdBy: string; // ID of the user who created it
   status?: 'approved' | 'pending' | 'rejected';
+  team?: Array<{ userId: string; userName: string; joinedAt: string; role?: string }>; // Team members array
 }
 
 export interface Faculty {
@@ -49,4 +50,16 @@ export interface Hackathon {
   joiningUrl: string;
   createdAt: string;
   createdBy: string;
+}
+
+export interface JoinRequest {
+  id: string;
+  projectId: string;
+  userId: string;
+  user: { id: string; name: string };
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+  matchPercentage?: number;
+  role?: 'developer' | 'learner';
+  skills?: string[];
 }
