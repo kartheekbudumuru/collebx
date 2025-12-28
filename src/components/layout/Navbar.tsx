@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Rocket, Menu, X, User, LayoutDashboard, FolderOpen, Users, LogOut, Trophy, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -16,8 +16,18 @@ export const navItems = [
 
 export function Navbar() {
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <>
@@ -71,11 +81,14 @@ export function Navbar() {
                 <User className="w-4 h-4" />
               </Button>
             </Link>
-            <Link to="/login">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground hover:text-destructive"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -121,12 +134,17 @@ export function Navbar() {
                 </div>
               )}
               <div className="border-t border-border my-2" />
-              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start gap-2 text-destructive">
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-2 text-destructive"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
             </div>
           </motion.div>
         )}
@@ -178,11 +196,14 @@ export function Navbar() {
               <User className="w-4 h-4" />
             </Button>
           </Link>
-          <Link to="/login">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-muted-foreground hover:text-destructive"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </motion.header>
